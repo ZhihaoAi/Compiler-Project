@@ -18,31 +18,46 @@
 %union {
     int intValue;               /* integer value */
     unsigned int symbolIndex;   /* symbol table index */
-    nodeType *nPtr;             /* node pointer */
+    nodeType *nodePtr;             /* node pointer */
 };
 
 %token <intValue> INTEGER
-%token <symbolIndex> VARIABLE
+%token <symbolIndex> IDENTIFIER
 %token FOR WHILE IF PRINT READ BREAK CONTINUE
-%nonassoc IFX
-%nonassoc ELSE
 
-%left AND OR
-%left GE LE EQ NE '>' '<'
+/* [Operator Precedence](http://en.cppreference.com/w/c/language/operator_precedence) */
+%left ','
+
+%right '='
+
+%left OR
+%left AND
+
+%left '|'
+%left '^'
+%left '&'
+
+%left EQ NE
+%left GE LE '>' '<'
+
 %left '+' '-'
 %left '*' '/' '%'
-%nonassoc UMINUS
-%nonassoc REF
-%type <nPtr> stmt expr stmt_list var
+%right '!' '~' UMINUS UPLUS
+
+%left SUBSCRIPT
+%nonassoc IF_WO_ELSE
+%nonassoc ELSE
+
+%type <nodePtr> stmt expr stmt_list var
 
 %%
 
 program:
-          function                  { exit(0); }
+          lines              { exit(0); }
         ;
 
-function:
-          function stmt             { ex($2); freeNode($2); }
+lines:
+          lines stmt         { ex($2); freeNode($2); }
         | /* NULL */
         ;
 
@@ -56,7 +71,7 @@ stmt:
         | CONTINUE ';'                    { $$ = opr(CONTINUE, 2, NULL, NULL);}
 	    | FOR '(' stmt stmt stmt ')' stmt { $$ = opr(FOR, 4, $3, $4, $5, $7); }
         | WHILE '(' expr ')' stmt         { $$ = opr(WHILE, 2, $3, $5); }
-        | IF '(' expr ')' stmt %prec IFX  { $$ = opr(IF, 2, $3, $5); }
+        | IF '(' expr ')' stmt %prec IF_WO_ELSE     { $$ = opr(IF, 2, $3, $5); }
         | IF '(' expr ')' stmt ELSE stmt  { $$ = opr(IF, 3, $3, $5, $7); }
         | '{' stmt_list '}'               { $$ = $2; }
         ;
@@ -70,25 +85,35 @@ expr:
           INTEGER               { $$ = con($1); }
         | var                   { $$ = $1; }
         | '-' expr %prec UMINUS { $$ = opr(UMINUS, 1, $2); }
+        | '+' expr %prec UPLUS  { $$ = opr(UPLUS, 1, $2); }
+        | '~' expr              { $$ = opr('~', 1, $2); }
+
+        | expr '&' expr         { $$ = opr('&', 2, $1, $3); }
+        | expr '|' expr         { $$ = opr('|', 2, $1, $3); }
+        | expr '^' expr         { $$ = opr('^', 2, $1, $3); }
+
         | expr '+' expr         { $$ = opr('+', 2, $1, $3); }
         | expr '-' expr         { $$ = opr('-', 2, $1, $3); }
         | expr '*' expr         { $$ = opr('*', 2, $1, $3); }
-        | expr '%' expr         { $$ = opr('%', 2, $1, $3); }
         | expr '/' expr         { $$ = opr('/', 2, $1, $3); }
+        | expr '%' expr         { $$ = opr('%', 2, $1, $3); }
+
         | expr '<' expr         { $$ = opr('<', 2, $1, $3); }
         | expr '>' expr         { $$ = opr('>', 2, $1, $3); }
         | expr GE expr          { $$ = opr(GE, 2, $1, $3); }
         | expr LE expr          { $$ = opr(LE, 2, $1, $3); }
         | expr NE expr          { $$ = opr(NE, 2, $1, $3); }
         | expr EQ expr          { $$ = opr(EQ, 2, $1, $3); }
+
+        | '!' expr              { $$ = opr('!', 1, $2); }
 	    | expr AND expr		    { $$ = opr(AND, 2, $1, $3); }
 	    | expr OR expr		    { $$ = opr(OR, 2, $1, $3); }
         | '(' expr ')'          { $$ = $2; }
         ;
 
 var:
-          VARIABLE              { $$ = id($1); }
-        | VARIABLE '[' expr ']' { $$ = opr(REF, 2, id($1), $3); }
+          IDENTIFIER                { $$ = id($1); }
+        | IDENTIFIER '[' expr ']'   { $$ = opr(SUBSCRIPT, 2, id($1), $3); }
         ;
 %%
 
@@ -98,12 +123,10 @@ nodeType *con(int value) {
     nodeType *p;
     size_t nodeSize;
 
-    /* allocate node */
     nodeSize = SIZEOF_NODEENUM + sizeof(conNodeType);
     if ((p = malloc(nodeSize)) == NULL)
-        yyerror("out of memory");
+        yyerror("Out of memory");
 
-    /* copy information */
     p->type = typeCon;
     p->con.value = value;
 
@@ -114,15 +137,13 @@ nodeType *id(int i) {
     nodeType *p;
     size_t nodeSize;
 
-    /* allocate node */
     nodeSize = SIZEOF_NODEENUM 
                 + sizeof(idNodeType);
     if ((p = malloc(nodeSize)) == NULL)
-        yyerror("out of memory");
+        yyerror("Out of memory");
 
-    /* copy information */
     p->type = typeId;
-    p->id.i = i;
+    p->id.index = i;
 
     return p;
 }
@@ -132,14 +153,12 @@ nodeType *opr(int oper, int nops, ...) {
     size_t nodeSize;
     int i;
 
-    /* allocate node */
     nodeSize = SIZEOF_NODEENUM 
                 + sizeof(oprNodeType) 
                 + (nops) * sizeof(nodeType*);
     if ((p = malloc(nodeSize)) == NULL)
-        yyerror("out of memory");
+        yyerror("Out of memory");
 
-    /* copy information */
     p->type = typeOpr;
     p->opr.oper = oper;
     p->opr.nops = nops;
@@ -173,7 +192,7 @@ int main(int argc, char **argv) {
         FILE* in = fopen(argv[1], "r");
         if (in == NULL){
             char* def_test = "default_test.mp";
-            printf("%s cannot be opened. Using %s instead.\n", argv[1], def_test);
+            printf("Failed openning \"%s\". Using %s instead.\n", argv[1], def_test);
             yyin = fopen(def_test, "r");
         } else {
             yyin = in;

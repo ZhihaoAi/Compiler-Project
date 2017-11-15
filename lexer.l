@@ -1,30 +1,59 @@
+%option noyywrap
 %{
 #include <stdlib.h>
 #include "header.h"
 #include "parser.tab.h"
-void yyerror(char *);
+extern void yyerror(char *);
 %}
+
+ic      "//"[^\n]*
+bc      "/*"([^*]|(\*[^/]))*"*/"
+alpha	[[:alpha:]]
+digit	[[:digit:]]
+hexdigit[a-fA-F0-9]
+alnum   [[:alnum:]]
+id 		{alpha}
 
 %%
 
-[a-z]       { 
-                yylval.symbolIndex = *yytext - 'a';
-                return VARIABLE;
-            }
+{id}		{ yylval.symbolIndex = *yytext - 'a'; return IDENTIFIER; }
 
-[0-9]+      {
-                yylval.intValue = atoi(yytext);
-                return INTEGER;
-            }
+-?0[xX]{hexdigit}+	{ yylval.intValue = strtol(yytext, NULL, 16); return(INTEGER); }
+-?0{digit}+			{ yylval.intValue = strtol(yytext, NULL, 8); return(INTEGER); }
+-?{digit}+			{ yylval.intValue = atoi(yytext); return INTEGER; }
 
-[-()<\[\]>=*+/;{}.%] {
-                return *yytext;
-             }
+"("				return '(';
+")"				return ')';
+"["				return '[';
+"]"				return ']';
+"{"				return '{';
+"}"				return '}';
+"."				return '.';
+";"				return ';';
 
+"&&"		    return AND;
+"||"		    return OR;
+"!"				return '!';
+
+"&"				return '&';
+"|"				return '|';
+"^"				return '^';
+"~"				return '~';
+
+"+"				return '+';
+"-"				return '-';
+"*"				return '*';
+"/"				return '/';
+"%"				return '%';
+
+"<"				return '<';
+">"				return '>';
+"=" 			return '=';
 ">="            return GE;
 "<="            return LE;
 "=="            return EQ;
 "!="            return NE;
+
 "for"		    return FOR;
 "while"         return WHILE;
 "if"            return IF;
@@ -33,15 +62,13 @@ void yyerror(char *);
 "break"         return BREAK;
 "continue"      return CONTINUE;
 "read"		    return READ;
-"&&"		    return AND;
-"||"		    return OR;
 
-\/\/.*\n	;	/* skip comments */
+"true"|"True"|"TRUE"		{ yylval.intValue = 1; return INTEGER; }
+"false"|"False"|"FALSE"		{ yylval.intValue = 0; return INTEGER; }
 
-[ \t\n]+        ;       /* ignore whitespace */
+{ic}|{bc}	;	/* skip comments */
+
+[ \t\n]+	;	/* ignore whitespace */
 
 .               yyerror("Unknown character");
 %%
-int yywrap(void) {
-    return 1;
-}
