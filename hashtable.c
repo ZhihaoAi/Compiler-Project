@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "hashtable.h"
-
+#include <stdio.h>
 /* Daniel J. Bernstein's "times 33" string hash function, from comp.lang.C;
    See https://groups.google.com/forum/#!topic/comp.lang.c/lSKWXiuNOAk */
 unsigned long hash(char *str) {
@@ -22,25 +22,24 @@ hashtable_t *make_hashtable(unsigned long size) {
 }
 
 void ht_put(hashtable_t *ht, char *key, void *val) {
-  /* FIXME: the current implementation doesn't update existing entries */
   unsigned int idx = hash(key) % ht->size;
   bucket_t *n = ht->buckets[idx];
   while(n){
      if(strcmp(n->key, key) == 0){
-       free(key);
-       free(n->val);
+       // free(key);
+       // free(n->val);
        n->val = val;
        return;
       }
      n = n->next;
   }
-     if(n == NULL){
-      bucket_t *b = malloc(sizeof(bucket_t));
-      b->key = key;
-      b->val = val;
-      b->next = ht->buckets[idx];
-      ht->buckets[idx] = b;
-    }
+  if(n == NULL){
+    bucket_t *b = malloc(sizeof(bucket_t));
+    b->key = key;
+    b->val = val;
+    b->next = ht->buckets[idx];
+    ht->buckets[idx] = b;
+  }
 }
 
 void *ht_get(hashtable_t *ht, char *key) {
@@ -89,7 +88,6 @@ void free_hashtable(hashtable_t *ht) {
   free(ht); 
 }
 
-/* TODO */
 void  ht_del(hashtable_t *ht, char *key) {
   unsigned int idx = hash(key) % ht->size;
   bucket_t *n = ht->buckets[idx];

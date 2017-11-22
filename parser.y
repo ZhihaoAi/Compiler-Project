@@ -3,26 +3,29 @@
     #include <stdlib.h>
     #include <stdarg.h>
     #include "header.h"
+    #include "hashtable.h"
 
     /* prototypes */
     nodeType *opr(int oper, int nops, ...);
-    nodeType *id(int i);
+    nodeType *id(char *);
     nodeType *con(int value);
     void freeNode(nodeType *p);
     int ex(nodeType *p);
     int yylex(void);
     void yyerror(char *s);
+    hashtable_t *ht;
     int sym[26];                    /* symbol table */
 %}
 
 %union {
     int intValue;               /* integer value */
-    unsigned int symbolIndex;   /* symbol table index */
+    char *idstr;
+    // unsigned int symbolIndex;   /* symbol table index */
     nodeType *nodePtr;             /* node pointer */
 };
 
 %token <intValue> INTEGER
-%token <symbolIndex> IDENTIFIER
+%token <idstr> IDENTIFIER
 %token FOR WHILE IF PRINT READ BREAK CONTINUE
 
 /* [Operator Precedence](http://en.cppreference.com/w/c/language/operator_precedence) */
@@ -133,7 +136,7 @@ nodeType *con(int value) {
     return p;
 }
 
-nodeType *id(int i) {
+nodeType *id(char *key) {
     nodeType *p;
     size_t nodeSize;
 
@@ -143,7 +146,9 @@ nodeType *id(int i) {
         yyerror("Out of memory");
 
     p->type = typeId;
-    p->id.index = i;
+    sprintf(p->id.key, "%s", key);
+    // printf("%s\n", p->id.key);
+    // p->id.key = key;
 
     return p;
 }
@@ -200,6 +205,7 @@ int main(int argc, char **argv) {
     } else {
         yyin = stdin;
     }
+    ht = make_hashtable(100);
     yyparse();
     return 0;
 }

@@ -2,6 +2,7 @@
 %{
 #include <stdlib.h>
 #include "header.h"
+#include "hashtable.h"
 #include "parser.tab.h"
 extern void yyerror(char *);
 %}
@@ -12,11 +13,9 @@ alpha	[[:alpha:]]
 digit	[[:digit:]]
 hexdigit[a-fA-F0-9]
 alnum   [[:alnum:]]
-id 		{alpha}
+id 		{alpha}{alnum}*
 
 %%
-
-{id}		{ yylval.symbolIndex = *yytext - 'a'; return IDENTIFIER; }
 
 -?0[xX]{hexdigit}+	{ yylval.intValue = strtol(yytext, NULL, 16); return(INTEGER); }
 -?0{digit}+			{ yylval.intValue = strtol(yytext, NULL, 8); return(INTEGER); }
@@ -65,6 +64,8 @@ id 		{alpha}
 
 "true"|"True"|"TRUE"		{ yylval.intValue = 1; return INTEGER; }
 "false"|"False"|"FALSE"		{ yylval.intValue = 0; return INTEGER; }
+
+{id}		{ yylval.idstr = strdup(yytext); return IDENTIFIER; }
 
 {ic}|{bc}	;	/* skip comments */
 

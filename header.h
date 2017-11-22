@@ -8,6 +8,7 @@ typedef struct {
 /* identifiers */
 typedef struct {
     int index;                  // index to symbol table (sym[])
+    char key[30];
 } idNodeType;
 
 /* operators */
