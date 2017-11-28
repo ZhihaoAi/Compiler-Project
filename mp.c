@@ -156,7 +156,7 @@ int ex(nodeType *p)
 
         case UMINUS:    return -ex(p->opr.op[0]);
         case UPLUS:     return +ex(p->opr.op[0]);
-        case '~':       return ~ex(p->opr.op[1]);
+        case '~':       return ~ex(p->opr.op[0]);
 
         case '&':       return ex(p->opr.op[0]) & ex(p->opr.op[1]);
         case '|':       return ex(p->opr.op[0]) | ex(p->opr.op[1]);
