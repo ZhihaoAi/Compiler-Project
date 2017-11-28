@@ -17,9 +17,9 @@ id 		{alpha}{alnum}*
 
 %%
 
--?0[xX]{hexdigit}+	{ yylval.intValue = strtol(yytext, NULL, 16); return(INTEGER); }
--?0{digit}+			{ yylval.intValue = strtol(yytext, NULL, 8); return(INTEGER); }
--?{digit}+			{ yylval.intValue = atoi(yytext); return INTEGER; }
+0[xX]{hexdigit}+	{ yylval.intValue = strtol(yytext, NULL, 16); return(INTEGER); }
+0{digit}+			{ yylval.intValue = strtol(yytext, NULL, 8); return(INTEGER); }
+{digit}+			{ yylval.intValue = atoi(yytext); return INTEGER; }
 
 "("				return '(';
 ")"				return ')';
